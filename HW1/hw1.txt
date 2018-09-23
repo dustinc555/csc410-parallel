@@ -1,0 +1,104 @@
+Dustin Cook
+CSC 410 PC, Karlsson
+
+1.
+These are the values I got when testing it on my own machine.
+&&: 1
+||: 0
+|: 0
+^: 0
+
+
+2.
+
+/**** Using reduction *******************************************************/
+# pragma omp parallel num_threads(thread_count) private(i) reduction(+:result) {
+    # pragma omp for
+      for (i = 0; i < 10; i++) {
+        result += arr[i];
+      }
+
+  }
+
+
+/**** Not using reduction ****************************************************/
+# pragma omp parallel num_threads(thread_count) private( i, local_result ) {
+      // declare local answer private and initialize it per thread
+      local_result = 0;
+    # pragma omp for
+      for (i = 0; i < 10; i++) {
+        // accumulate all i's this thread is given
+        local_result += arr[i];
+      }
+    # pragma omp critical
+      result += local_result;
+  }
+
+
+  3.
+
+  a.
+  #  pragma omp parallel for num_threads(thread_count)
+    for(i=0; i< (int) sqrt(x); i++) {
+      a[i] = 2.3*i;
+      if (i < 10) b[i] = a[i];
+    }
+
+  b.
+  OpenMP specification requires that the loop be in the so-called canonical form.
+  Canonical form admits only four types of relational operations in the test clause of the for loop.
+  Namely <, <=, >, or >=.
+
+  c.
+  #pragma omp parallel num_threads(thread_count)
+  #pragma omp for
+  for(i=0; i<n; i++)
+    a[i] = foo(i);
+
+  d.
+  #pragma omp parallel for num_threads(thread_count)
+  for(i=0; i<n; i++) {
+    a[i] = foo(i);
+    if(a[i] < b[i]) a[i] = b[i];
+  }
+
+  e.
+  The for-loop must be a structured block, and in addition, its execution must not be terminated by a break statement.
+  Although it may be possible to do what openMP does manually and make it so that you can insert a break statement.
+
+  f.
+  #pragma omp parallel for num_threads(n)
+  dotp = 0;
+  for(i=0; i<n; i++)
+  dotp += a[i]*b[i];
+
+  g.
+  This for loop appears to be a sequential problem because it builds on itself.
+  It is impossible to know if the previous indexes are good values and this would become]
+  incorrect if done parallel.
+
+  h.
+  This one should not be done in parallel because it too will eventually depend on its own previous
+  values.
+
+
+  4.
+    If you do m tasks each taking time t sequentially,
+    it will take m * t time to complete all of the sub tasks.
+
+    If you have m processors and divide it into m threads, then it just takes t time.
+
+  5.
+    If a hypercube has n bits for its addresses, that implies that
+    the topology has 2^n nodes.
+
+    Each node will also have the same amount of edges as there are bits for addresses.
+
+    Assuming a perfect hypercube that follows the properties that the address 
+    will differ from its neighbors by one bit and it is not missing any nodes,
+
+    RelayMessage(int current, int desired, string msg)
+	while (current != desired)
+		current := not one unmatching bit starting from the least significant bit (or most)
+	current.send(message);
+

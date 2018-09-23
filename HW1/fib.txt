@@ -1,0 +1,5 @@
+/** This is not a problem that you can perform parrarel because
+    every index of the fib sequence builds upon the two previous cases. Fib[i+1] cannot be done
+    correctly unless fib[i] and fib[i-1] have been calclated. **/
+	for (i = 2; i<n; i++)
+		fib[i] = fib[i-1] + fib[i-2];
