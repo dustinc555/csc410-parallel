@@ -94,11 +94,11 @@ These are the values I got when testing it on my own machine.
 
     Each node will also have the same amount of edges as there are bits for addresses.
 
-    Assuming a perfect hypercube that follows the properties that the address 
+    Assuming a perfect hypercube that follows the properties that the address
     will differ from its neighbors by one bit and it is not missing any nodes,
 
     RelayMessage(int current, int desired, string msg)
-	while (current != desired)
-		current := not one unmatching bit starting from the least significant bit (or most)
-	current.send(message);
-
+    	while (current != desired)
+        nextAddr := !(one bit in current that doesnt match desired) // starting from the left or right
+    		current := edge that is nextAddr
+    	current.send(message)

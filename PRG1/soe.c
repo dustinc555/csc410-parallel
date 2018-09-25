@@ -3,13 +3,14 @@
  * Purpose: Finds all primes up to given n.
  *
  * Input:   n
- * Output:  All primes leading up to n in O(n) time.
+ * Output:  All primes leading up to n.
  *
  * Compile: gcc -g -Wall -fopenmp -o soe soe.c -lm
- * Usage:   ./soe <n> <Print Input: 1 for yes, 0 for no>
+ * Usage:   ./soe <n> <Print Table: 1 for yes, 0 for no>
  *
- * Notes: There does appear to be a performance boost of around .002 seconds when using
- *        dynamic vs static.
+ * Notes: There does appear to be a significant performance boost when using
+ *        dynamic vs static up to 46%. For the average thread time, i only take account for threads that do work eg: they have found a prime
+          and they have to find the multiples because otherwise it would throw off the average time.
  *
  */
 
@@ -33,11 +34,12 @@ int main(int argc, char *argv[])
   int n;
   int p;
   int longRuns = 0;
-  int printInput = 0;
+  int printTable = 0;
   double start = omp_get_wtime();
   double averageTime = 0.0;
   int thread_count = 8;
   n = strtol(argv[1], NULL, 10);
+  printTable = strtol(argv[2], NULL, 10);
   int size = n + 1;
   char marks[size];
 
@@ -46,7 +48,7 @@ int main(int argc, char *argv[])
     marks[i] = true;
   }
 
-  printf("n: %d, size: %d, thread_count: %d\n", n, size, thread_count);
+  printf("n: %d, array size: %d, thread_count: %d\n", n, size, thread_count);
 
   # pragma omp parallel for num_threads(thread_count) schedule( static, 1 ) reduction(+:averageTime)
   for (p = 2; p < size; p++) {
@@ -70,7 +72,7 @@ int main(int argc, char *argv[])
 
   # pragma omp single
   {
-    if (printInput == true)
+    if (printTable == true)
       printPrimeTable(marks, size, n);
     else {
       averageTime /= longRuns;

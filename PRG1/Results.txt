@@ -1,0 +1,21 @@
+Test SOE
+static
+  average thread time: 0.079435
+  total time: 0.122974
+dynamic
+  average thread time: 0.085093
+  total time: 0.155302
+percent increase
+  average thread time: 7.12%
+  total time: 26%
+
+Test Circuit
+static
+  average time per thread: 0.000005
+  program time: 0.131095
+dynamic
+  average time per thread: 0.000007
+  program time: 0.133040
+percent increase
+  average thread time: 40%
+  program time: 1.5%

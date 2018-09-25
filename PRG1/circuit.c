@@ -9,7 +9,7 @@
  * Compile: gcc -g -Wall -fopenmp -o circuit circuit.c
  * Usage:   ./main <number of threads> <>
  *
- * Notes: There does appear to be a small performance boost when using static vs dynamic.
+ * Notes: There does appear to be a small performance boost when using dynamic instead of static of about 4.7%.
  *
  *
  */
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
   if (argc != 2) Usage(argv[0]);
   thread_count = strtol(argv[1], NULL, 10);
 
-#   pragma omp parallel for num_threads(thread_count) schedule( dynamic, 1 ) reduction(+:count, averageTime)
+#   pragma omp parallel for num_threads(thread_count) schedule( static, 1 ) reduction(+:count, averageTime)
     for (i = 0; i <= MAX_VALUE; i++)
     {
       double wtime = omp_get_wtime();
@@ -73,10 +73,10 @@ int main(int argc, char *argv[])
      && (v[9] || v[11]) && (v[10] || v[11])
      && (v[12] || v[13]) && (v[13] || !v[14])
      && (v[14] || v[15])) {
-     /*printf ("%d) %d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d\n", id,
+     printf ("%d) %d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d\n", id,
      v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],
      v[10],v[11],v[12],v[13],v[14],v[15]);
-     fflush (stdout); */
+     fflush (stdout);
      return 1;
    } else return 0;
  }
