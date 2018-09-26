@@ -7,9 +7,9 @@
  *          and the timeing.
  *
  * Compile: gcc -g -Wall -fopenmp -o circuit circuit.c
- * Usage:   ./main <number of threads> <>
+ * Usage:   ./circuit <number of threads>
  *
- * Notes: There does appear to be a small performance boost when using dynamic instead of static of about 4.7%.
+ * Notes: There does appear to be a small performance boost when using dynamic instead of static. See Results.txt.
  *
  *
  */
@@ -35,7 +35,9 @@ int main(int argc, char *argv[])
   if (argc != 2) Usage(argv[0]);
   thread_count = strtol(argv[1], NULL, 10);
 
-#   pragma omp parallel for num_threads(thread_count) schedule( static, 1 ) reduction(+:count, averageTime)
+  printf("thread_count: %d\n", thread_count);
+
+#   pragma omp parallel for num_threads(thread_count) schedule( dynamic, 1 ) reduction(+:count, averageTime)
     for (i = 0; i <= MAX_VALUE; i++)
     {
       double wtime = omp_get_wtime();
@@ -48,8 +50,8 @@ int main(int argc, char *argv[])
   # pragma omp single
   {
     averageTime /= MAX_VALUE;
-    printf("count: %d\naverage time per thread: %f\n", count, averageTime);
-    printf("program time: %f\n", omp_get_wtime() - start);
+    printf("count: %d\naverage time per thread: %f\n", count, averageTime * 1000);
+    printf("program time: %f\n", (omp_get_wtime() - start) * 1000);
   }
 
   return 0;

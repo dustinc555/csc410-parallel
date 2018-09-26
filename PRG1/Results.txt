@@ -1,21 +1,32 @@
+/**********************************************
 Test SOE
+***********************************************/
 static
-  average thread time: 0.079435
-  total time: 0.122974
+  n: 1000000, array size: 1000001, thread_count: 8
+  average thread time: 16.834512 ms
+  total time: 25.374000 ms
 dynamic
-  average thread time: 0.085093
-  total time: 0.155302
-percent increase
-  average thread time: 7.12%
-  total time: 26%
+  n: 1000000, array size: 1000001, thread_count: 8
+  average thread time: 19.300396 ms
+  total time: 26.063000 ms
+time decrease
+  total time: -2.7% -> takes longer
 
+/**********************************************
 Test Circuit
+***********************************************/
 static
-  average time per thread: 0.000005
-  program time: 0.131095
+  thread_count: 8
+  count: 9
+  average time per thread: 0.001130
+  program time: 22.002000
 dynamic
-  average time per thread: 0.000007
-  program time: 0.133040
-percent increase
-  average thread time: 40%
-  program time: 1.5%
+  thread_count: 8
+  count: 9
+  average time per thread: 0.001236
+  program time: 21.677000
+time decrease
+  total time: 1.5% -> slightly better
+Note: these results are done on my home computer.
+      when i run these tests on my school laptop, i can
+      get performance boosts of around 4%.

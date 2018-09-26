@@ -1,16 +1,18 @@
 /* File:    soe.c
  * Author:  Dustin Cook
  * Purpose: Finds all primes up to given n.
+ * 9/26/2018
  *
  * Input:   n
- * Output:  All primes leading up to n.
+ * Output:  All primes leading up to n or run time.
  *
  * Compile: gcc -g -Wall -fopenmp -o soe soe.c -lm
  * Usage:   ./soe <n> <Print Table: 1 for yes, 0 for no>
+ *  If Print Table: prints a table of all the primes in ranges.
+ *  else prints the run time
  *
- * Notes: There does appear to be a significant performance boost when using
- *        dynamic vs static up to 46%. For the average thread time, i only take account for threads that do work eg: they have found a prime
-          and they have to find the multiples because otherwise it would throw off the average time.
+ * Notes: There does not appear to be a performance boos when using dynamic vs static here. This is most likley because majority of the multiples
+ *        can be marked in the beggining indexes when using static.
  *
  */
 
@@ -29,8 +31,7 @@ void printDivider();
 void printPrimeTable(char * marks, int size, int n);
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int n;
   int p;
   int longRuns = 0;
@@ -38,6 +39,7 @@ int main(int argc, char *argv[])
   double start = omp_get_wtime();
   double averageTime = 0.0;
   int thread_count = 8;
+  if (argc != 3) Usage(argv[0]);
   n = strtol(argv[1], NULL, 10);
   printTable = strtol(argv[2], NULL, 10);
   int size = n + 1;
@@ -50,24 +52,18 @@ int main(int argc, char *argv[])
 
   printf("n: %d, array size: %d, thread_count: %d\n", n, size, thread_count);
 
+  // p should be automatically private
   # pragma omp parallel for num_threads(thread_count) schedule( static, 1 ) reduction(+:averageTime)
   for (p = 2; p < size; p++) {
-    int local_p = false;
-    # pragma omp critical (validateP)
-    {
-      if (marks[p] == true)
-        local_p = p;
-    }
-    if (local_p != false) {
-      for (int i = local_p * 2; i <= size; i += local_p) {
+
+    if (marks[p]) { // mark the multiples
+      for (int i = p * 2; i <= size; i += p) {
            marks[i] = false;
       }
-    }
-
-    if (local_p != false) {
       averageTime += omp_get_wtime() - start;
       longRuns++;
     }
+
   }
 
   # pragma omp single
@@ -76,11 +72,9 @@ int main(int argc, char *argv[])
       printPrimeTable(marks, size, n);
     else {
       averageTime /= longRuns;
-      printf("average thread time: %f\ntotal time: %f\n", averageTime, omp_get_wtime() - start);
+      printf("average thread time: %f ms\ntotal time: %f ms\n", averageTime * 1000, (omp_get_wtime() - start) * 1000);
     }
   }
-
-
   return 0;
 }
 
