@@ -3,14 +3,14 @@ Test SOE
 ***********************************************/
 static
   n: 1000000, array size: 1000001, thread_count: 8
-  average thread time: 16.834512 ms
-  total time: 25.374000 ms
+  average thread time: 33.840818 ms
+  total time: 62.199000 ms
 dynamic
   n: 1000000, array size: 1000001, thread_count: 8
-  average thread time: 19.300396 ms
-  total time: 26.063000 ms
+  average thread time: 35.086775 ms
+  total time: 56.902000 ms
 time decrease
-  total time: -2.7% -> takes longer
+  total time: 8.2%
 
 /**********************************************
 Test Circuit

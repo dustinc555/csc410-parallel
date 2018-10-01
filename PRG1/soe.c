@@ -11,8 +11,8 @@
  *  If Print Table: prints a table of all the primes in ranges.
  *  else prints the run time
  *
- * Notes: There does not appear to be a performance boos when using dynamic vs static here. This is most likley because majority of the multiples
- *        can be marked in the beggining indexes when using static.
+ * Notes: There does appear to be a slight performance boost when using dynamic vs static. This is probably due to the overhead generated
+ *  by using static instead of allowing the threads to easily grab the next iteration as they go.
  *
  */
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
   printf("n: %d, array size: %d, thread_count: %d\n", n, size, thread_count);
 
   // p should be automatically private
-  # pragma omp parallel for num_threads(thread_count) schedule( static, 1 ) reduction(+:averageTime)
+  # pragma omp parallel for num_threads(thread_count) schedule( dynamic, 1 ) reduction(+:averageTime)
   for (p = 2; p < size; p++) {
 
     if (marks[p]) { // mark the multiples
