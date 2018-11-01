@@ -25,8 +25,6 @@ using namespace std;
 */
 __global__ void matrixMul(double * a, double * b, double * c, int ROW_SIZE, int SIZE)
 {
-  __shared__ double sdata[1000];
-
 
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
   int b_index = a_index % ROW_SIZE;
@@ -36,38 +34,21 @@ __global__ void matrixMul(double * a, double * b, double * c, int ROW_SIZE, int 
   a[a_index] *= b[b_index];
   __syncthreads();
 
-  // mapping stage
-  // at this stage, convert each row in a to its own local array for this block.
-  // all rows should be isolated into a local sdata
-  // sdata[i] = a[i + ROW_SIZE * row_num]
-  if (threadIdx.x >= ROW_SIZE) return; // red threads are no longer needed at this point
-  // (red thread) -> a thread that goes over the row size and cannot be used in a local sense
-
   int start = blockIdx.x * ROW_SIZE;
-  sdata[threadIdx.x] = a[start + threadIdx.x];
-  __syncthreads();
 	  
   // Reduction stage
   // sum up the local array and place it into its according c_index
-  /*
-  for (unsigned int stride = ROW_SIZE+1; stride >= 1; stride >>= 1) 
-  {
-    __syncthreads();
-    if (threadIdx.x < stride)
-      sdata[threadIdx.x] += sdata[threadIdx.x+stride];
-  }*/
 
-  for (unsigned int s=1; s < blockDim.x; s *= 2) 
+  for (unsigned int s = 1; s < ROW_SIZE; s *= 2) 
   {
     int index = 2 * s * threadIdx.x;
-    if (index < ROW_SIZE) {
-      sdata[index] += sdata[index + s];
-    }
+    if (index + s < ROW_SIZE) 
+      a[index + start] += a[index + s + start];
   __syncthreads();
   }
   
   if (threadIdx.x == 0)
-    c[blockIdx.x] = sdata[0];
+    c[blockIdx.x] = a[start];
     
 }
 
@@ -82,6 +63,7 @@ void fillVector(thrust::host_vector<double> & vec, bool allOnes);
 /*********************************/
 int main( int argc, char* argv[] )
 {
+  auto start = chrono::steady_clock::now();
   if ( argc != 3 )
     usage();
 
@@ -95,13 +77,13 @@ int main( int argc, char* argv[] )
   thrust::device_vector<double> c(N);
    
   bool random = argv[2][0] == 'r';
-  printf("random: %d\n", random);
+  //printf("random: %d\n", random);
 
   double lowerLimit = random ? 0 : 1;
-  double upperLimit = random ? 5 : 1;
+  double upperLimit = random ? 3 : 1;
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-  printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  //printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
   std::default_random_engine re(seed);
   std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
   for (int i = 0; i < h_a.size(); i++)
@@ -113,6 +95,7 @@ int main( int argc, char* argv[] )
   d_a = h_a;
   d_b = h_b;
 
+  
   cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
   {
@@ -124,7 +107,7 @@ int main( int argc, char* argv[] )
   for (int i = 0; i < N; i++)
     cout << h_b[i] << " ";
   cout << endl;
-
+  
 
   // vectors are unfortunatly not available on cuda device
   // but you can get the memory address, pass it to the device,
@@ -135,17 +118,22 @@ int main( int argc, char* argv[] )
 
   int blocks = N;
   int threads = N + (32 - (N % 32)); // guarente enough threads per row that is divisible by 32 
-  cout << "blocks: " << N << " threads: " << threads << endl;
+  //cout << "blocks: " << N << " threads: " << threads << endl;
   matrixMul<<<blocks, threads>>>(p_a, p_b, p_c, N, SIZE);
 
   cudaDeviceSynchronize();
 
   thrust::host_vector<double> result = c;
 
+  
   printf("\n\nresult:\n");
   for (int i = 0; i < result.size(); i++)
     cout << "result[" << i << "] = " << result[i] << endl; 
-  
+    
+  auto end = chrono::steady_clock::now();
+  cout << "Elapsed time in nanoseconds: "
+        << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
+        << " ns" << endl;
   return 0;
 } 
 
