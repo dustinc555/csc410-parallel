@@ -18,6 +18,18 @@
 
 using namespace std;
 
+__global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
+{
+  int a_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int b_index = a_index % ROW_SIZE;
+
+  if (a_index >= SIZE) return;
+  // The multiplication stage must be done before the mapping and reduction stage
+  // all of these tasks can be done in parallel
+  a[a_index] *= b[b_index];
+
+}
+
 /** matrixMul(double * arr, double * b, double * c, const int N, const int SIZE)
 *   Expects arr to be a matrix, b a vector, and c a result vector
 *   c[i] = sum(a[i,j] * b[i])
@@ -26,33 +38,27 @@ using namespace std;
 __global__ void matrixMul(double * a, double * b, double * c, int ROW_SIZE, int SIZE)
 {
 
+
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
   int b_index = a_index % ROW_SIZE;
+  int c_index = a_index / ROW_SIZE;
 
-  if (a_index > SIZE)
-
-  // The multiplication stage must be done before the mapping and reduction stage
-  // all of these tasks can be done in parallel
-  a[a_index] *= b[b_index];
-  __syncthreads();
-
-  int offset = blockIdx.x * ROW_SIZE; // the row we are working with
-	  
+  int offset = c_index * ROW_SIZE; // the row we are working with
+  //a[a_index] = a_index;
+  
   // Reduction stage
   // sum up the local array and place it into its according c_index
-  __syncthreads();
-  __syncthreads();
-  for (int s = 1; s < blockDim.x; s *= 2) 
+  for (int s = 1; s < SIZE; s *= 2) 
   {
-    int index = 2 * s * threadIdx.x;
+    int index = 2 * s * b_index;
     if (index + s < ROW_SIZE) 
-      a[index + offset] += a[index + s + offset];
+      a[index + offset] += a[index + offset + s];
     __syncthreads();
   }
   
   if (threadIdx.x == 0)
     c[blockIdx.x] = a[offset];
-    
+ 
 }
 
 const int INCORRECT_NUM_ARGS_ERROR = 1;
@@ -118,12 +124,15 @@ int main( int argc, char* argv[] )
   double * p_a = thrust::raw_pointer_cast(&d_a[0]);
   double * p_b = thrust::raw_pointer_cast(&d_b[0]);
   double * p_c = thrust::raw_pointer_cast(&c[0]);
-
+  
+  // keep threads below 1024 but ensure no partial rows... hmm
+  
   int blocks = N;
-  int threads = N + (32 - (N % 32)); // guarente enough threads per row that is divisible by 32 
-  //cout << "blocks: " << N << " threads: " << threads << endl;
+  int threads = N;
+  //cout << "blocks: " << blocks << " threads: " << THREADS << endl;
+  performMults<<<blocks, threads>>>(p_a, p_b, N, SIZE);
+  cudaDeviceSynchronize();
   matrixMul<<<blocks, threads>>>(p_a, p_b, p_c, N, SIZE);
-
   cudaDeviceSynchronize();
 
   thrust::host_vector<double> result = c;
@@ -133,21 +142,22 @@ int main( int argc, char* argv[] )
   //printf("\n\nresult:\n");
   for (int i = 0; i < result.size(); i++)
     cout << result[i] << " "; 
+  //cout << endl;
   
-  /*
+  /* 
   cout << "Reduction result on matrix:" << endl;
   for (int i = 0; i < SIZE; i++)
   {
     cout << h_a[i] << " ";
     if ((i + 1) % N == 0) cout << endl;
-  }
+  }*/
   
   
-  auto end = chrono::steady_clock::now();
-  cout << "Elapsed time in nanoseconds: "
-        << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
-        << " ns" << endl;
-  */
+  //auto end = chrono::steady_clock::now();
+  //cout << "Elapsed time in nanoseconds: "
+  //      << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
+  //      << " ns" << endl;
+  
   return 0;
 } 
 

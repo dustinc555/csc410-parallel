@@ -2,7 +2,7 @@
 
 import subprocess
 
-for i in range(1, 1001):
+for i in range(1, 1001, 50):
 	output = subprocess.run(["./parallel", str(i), "1"], stdout=subprocess.PIPE, universal_newlines=True).stdout
 	for c in (output.split()):
 		if (c != str(i)):

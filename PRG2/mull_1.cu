@@ -16,6 +16,19 @@
 #include <chrono>
 
 
+__global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
+{
+  int a_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int b_index = a_index % ROW_SIZE;
+
+  if (a_index >= SIZE) return;
+  // The multiplication stage must be done before the mapping and reduction stage
+  // all of these tasks can be done in parallel
+  a[a_index] *= b[b_index];
+
+}
+
+
 using namespace std;
 
 /** matrixMul(double * arr, double * b, double * c, const int N, const int SIZE)
@@ -27,12 +40,6 @@ __global__ void matrixMul(double * a, double * b, double * c, const int ROW_SIZE
 {
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
   int b_index = a_index % ROW_SIZE;
-
-  if (a_index >= SIZE) return;
-
-  // create the multiplies, we will sum them later
-  a[a_index] *= b[b_index];
-  __syncthreads();
   
   if (b_index == 0) // if we are a zero index, sum up the row up to but not including the next 0 row.
   {
@@ -58,6 +65,7 @@ void fillVector(thrust::host_vector<double> & vec, bool allOnes);
 /*********************************/
 int main( int argc, char* argv[] )
 {
+  auto start = chrono::steady_clock::now();
   if ( argc != 3 )
     usage();
 
@@ -110,17 +118,24 @@ int main( int argc, char* argv[] )
   double * p_c = thrust::raw_pointer_cast(&c[0]);
 
   int blocks = (SIZE/THREADS+1); 
-  
+ 
+  performMults<<<blocks, THREADS>>>(p_a, p_b, N, SIZE);
+  cudaDeviceSynchronize(); 
   matrixMul<<<blocks, THREADS>>>(p_a, p_b, p_c, N, SIZE);
-
   cudaDeviceSynchronize();
 
   thrust::host_vector<double> result = c;
 
   
   //printf("\n\nresult:\n");
-  for (int i = 0; i < result.size(); i++)
-    cout << result[i] << " "; 
+  //for (int i = 0; i < result.size(); i++)
+  //  cout << result[i] << " ";
+
+  auto end = chrono::steady_clock::now();
+  cout << "Elapsed time in nanoseconds: "
+        << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
+        << " ns" << endl;
+   
   
   return 0;
 } 
