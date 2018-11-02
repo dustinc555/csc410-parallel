@@ -79,25 +79,28 @@ int main( int argc, char* argv[] )
   thrust::device_vector<double> c(N);
    
   bool random = argv[2][0] == 'r';
-  //printf("random: %d\n", random);
 
   double lowerLimit = random ? 0 : 1;
-  double upperLimit = random ? 100000 : 1;
+  double upperLimit = random ? 3 : 1;
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-  //printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  #ifdef DEBUG
+  printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  #endif
+
   std::default_random_engine re(seed);
   std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
   for (int i = 0; i < h_a.size(); i++)
-    h_a[i] = unif(re);
+    h_a[i] = floor(unif(re));
   for (int i = 0; i < h_b.size(); i++)
-    h_b[i] = unif(re);
+    h_b[i] = floor(unif(re));
   
 
   d_a = h_a;
   d_b = h_b;
-
-  /*cout << "Matrix values:" << endl;
+  
+  #ifdef DEBUG
+  cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
   {
     cout << h_a[i] << " ";
@@ -108,7 +111,7 @@ int main( int argc, char* argv[] )
   for (int i = 0; i < N; i++)
     cout << h_b[i] << " ";
   cout << endl;
-  */
+  #endif
 
   // vectors are unfortunatly not available on cuda device
   // but you can get the memory address, pass it to the device,
@@ -126,17 +129,22 @@ int main( int argc, char* argv[] )
 
   thrust::host_vector<double> result = c;
 
-  
-  //printf("\n\nresult:\n");
-  //for (int i = 0; i < result.size(); i++)
-  //  cout << result[i] << " ";
+  #ifdef DEBUG
+  printf("\n\nresult:\n");
+  #endif
+  for (int i = 0; i < result.size(); i++)
+    cout << result[i] << " ";
+  #ifdef DEBUG 
+  cout << endl;
+  #endif
 
+  #ifdef DEBUG
   auto end = chrono::steady_clock::now();
   cout << "Elapsed time in nanoseconds: "
         << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
         << " ns" << endl;
+  #endif
    
-  
   return 0;
 } 
 

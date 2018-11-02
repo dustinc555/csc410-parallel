@@ -56,8 +56,8 @@ __global__ void matrixMul(double * a, double * b, double * c, int ROW_SIZE, int 
     __syncthreads();
   }
   
-  if (threadIdx.x == 0)
-    c[blockIdx.x] = a[offset];
+  if (b_index == 0)
+    c[c_index] = a[offset];
  
 }
 
@@ -72,7 +72,10 @@ void fillVector(thrust::host_vector<double> & vec, bool allOnes);
 /*********************************/
 int main( int argc, char* argv[] )
 {
+  #ifdef DEBUG
   auto start = chrono::steady_clock::now();
+  #endif
+
   if ( argc != 3 )
     usage();
 
@@ -86,13 +89,14 @@ int main( int argc, char* argv[] )
   thrust::device_vector<double> c(N);
    
   bool random = argv[2][0] == 'r';
-  //printf("random: %d\n", random);
 
   double lowerLimit = random ? 0 : 1;
   double upperLimit = random ? 3 : 1;
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-  //printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  #ifdef DEBUG
+  printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  #endif
   std::default_random_engine re(seed);
   std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
   for (int i = 0; i < h_a.size(); i++)
@@ -104,7 +108,7 @@ int main( int argc, char* argv[] )
   d_a = h_a;
   d_b = h_b;
 
-  /*
+  #ifdef DEBUG
   cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
   {
@@ -116,7 +120,7 @@ int main( int argc, char* argv[] )
   for (int i = 0; i < N; i++)
     cout << h_b[i] << " ";
   cout << endl;
-  */
+  #endif
 
   // vectors are unfortunatly not available on cuda device
   // but you can get the memory address, pass it to the device,
@@ -138,25 +142,30 @@ int main( int argc, char* argv[] )
   thrust::host_vector<double> result = c;
   h_a = d_a;
   
-  
-  //printf("\n\nresult:\n");
+  #ifdef DEBUG
+  printf("\n\nresult:\n");
+  #endif
   for (int i = 0; i < result.size(); i++)
-    cout << result[i] << " "; 
-  //cout << endl;
+    cout << result[i] << " ";
+  #ifdef DEBUG 
+  cout << endl;
+  #endif
   
-  /* 
+  #ifdef DEBUG
   cout << "Reduction result on matrix:" << endl;
   for (int i = 0; i < SIZE; i++)
   {
     cout << h_a[i] << " ";
     if ((i + 1) % N == 0) cout << endl;
-  }*/
+  }
+  #endif
   
-  
-  //auto end = chrono::steady_clock::now();
-  //cout << "Elapsed time in nanoseconds: "
-  //      << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
-  //      << " ns" << endl;
+  #ifdef DEBUG
+  auto end = chrono::steady_clock::now();
+  cout << "Elapsed time in nanoseconds: "
+        << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
+        << " ns" << endl;
+  #endif
   
   return 0;
 } 
