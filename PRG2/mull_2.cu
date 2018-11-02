@@ -29,26 +29,29 @@ __global__ void matrixMul(double * a, double * b, double * c, int ROW_SIZE, int 
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
   int b_index = a_index % ROW_SIZE;
 
+  if (a_index > SIZE)
+
   // The multiplication stage must be done before the mapping and reduction stage
   // all of these tasks can be done in parallel
   a[a_index] *= b[b_index];
   __syncthreads();
 
-  int start = blockIdx.x * ROW_SIZE;
+  int offset = blockIdx.x * ROW_SIZE; // the row we are working with
 	  
   // Reduction stage
   // sum up the local array and place it into its according c_index
-
-  for (unsigned int s = 1; s < ROW_SIZE; s *= 2) 
+  __syncthreads();
+  __syncthreads();
+  for (int s = 1; s < blockDim.x; s *= 2) 
   {
     int index = 2 * s * threadIdx.x;
     if (index + s < ROW_SIZE) 
-      a[index + start] += a[index + s + start];
-  __syncthreads();
+      a[index + offset] += a[index + s + offset];
+    __syncthreads();
   }
   
   if (threadIdx.x == 0)
-    c[blockIdx.x] = a[start];
+    c[blockIdx.x] = a[offset];
     
 }
 
@@ -95,7 +98,7 @@ int main( int argc, char* argv[] )
   d_a = h_a;
   d_b = h_b;
 
-  
+  /*
   cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
   {
@@ -107,7 +110,7 @@ int main( int argc, char* argv[] )
   for (int i = 0; i < N; i++)
     cout << h_b[i] << " ";
   cout << endl;
-  
+  */
 
   // vectors are unfortunatly not available on cuda device
   // but you can get the memory address, pass it to the device,
@@ -124,16 +127,27 @@ int main( int argc, char* argv[] )
   cudaDeviceSynchronize();
 
   thrust::host_vector<double> result = c;
-
+  h_a = d_a;
   
-  printf("\n\nresult:\n");
+  
+  //printf("\n\nresult:\n");
   for (int i = 0; i < result.size(); i++)
-    cout << "result[" << i << "] = " << result[i] << endl; 
-    
+    cout << result[i] << " "; 
+  
+  /*
+  cout << "Reduction result on matrix:" << endl;
+  for (int i = 0; i < SIZE; i++)
+  {
+    cout << h_a[i] << " ";
+    if ((i + 1) % N == 0) cout << endl;
+  }
+  
+  
   auto end = chrono::steady_clock::now();
   cout << "Elapsed time in nanoseconds: "
         << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
         << " ns" << endl;
+  */
   return 0;
 } 
 

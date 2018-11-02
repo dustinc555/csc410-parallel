@@ -71,13 +71,13 @@ int main( int argc, char* argv[] )
   thrust::device_vector<double> c(N);
    
   bool random = argv[2][0] == 'r';
-  printf("random: %d\n", random);
+  //printf("random: %d\n", random);
 
   double lowerLimit = random ? 0 : 1;
-  double upperLimit = random ? 5 : 1;
+  double upperLimit = random ? 100000 : 1;
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-  printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  //printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
   std::default_random_engine re(seed);
   std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
   for (int i = 0; i < h_a.size(); i++)
@@ -89,7 +89,7 @@ int main( int argc, char* argv[] )
   d_a = h_a;
   d_b = h_b;
 
-  cout << "Matrix values:" << endl;
+  /*cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
   {
     cout << h_a[i] << " ";
@@ -100,7 +100,7 @@ int main( int argc, char* argv[] )
   for (int i = 0; i < N; i++)
     cout << h_b[i] << " ";
   cout << endl;
-
+  */
 
   // vectors are unfortunatly not available on cuda device
   // but you can get the memory address, pass it to the device,
@@ -117,9 +117,10 @@ int main( int argc, char* argv[] )
 
   thrust::host_vector<double> result = c;
 
-  printf("\n\nresult:\n");
+  
+  //printf("\n\nresult:\n");
   for (int i = 0; i < result.size(); i++)
-    cout << "result[" << i << "] = " << result[i] << endl; 
+    cout << result[i] << " "; 
   
   return 0;
 } 
