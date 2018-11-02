@@ -16,6 +16,19 @@
 #include <chrono>
 
 
+__global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
+{
+  int a_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int b_index = a_index % ROW_SIZE;
+
+  if (a_index >= SIZE) return;
+  // The multiplication stage must be done before the mapping and reduction stage
+  // all of these tasks can be done in parallel
+  a[a_index] *= b[b_index];
+
+}
+
+
 using namespace std;
 
 /** matrixMul(double * arr, double * b, double * c, const int N, const int SIZE)
@@ -27,12 +40,6 @@ __global__ void matrixMul(double * a, double * b, double * c, const int ROW_SIZE
 {
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
   int b_index = a_index % ROW_SIZE;
-
-  if (a_index >= SIZE) return;
-
-  // create the multiplies, we will sum them later
-  a[a_index] *= b[b_index];
-  __syncthreads();
   
   if (b_index == 0) // if we are a zero index, sum up the row up to but not including the next 0 row.
   {
@@ -58,6 +65,7 @@ void fillVector(thrust::host_vector<double> & vec, bool allOnes);
 /*********************************/
 int main( int argc, char* argv[] )
 {
+  auto start = chrono::steady_clock::now();
   if ( argc != 3 )
     usage();
 
@@ -71,24 +79,27 @@ int main( int argc, char* argv[] )
   thrust::device_vector<double> c(N);
    
   bool random = argv[2][0] == 'r';
-  printf("random: %d\n", random);
 
   double lowerLimit = random ? 0 : 1;
-  double upperLimit = random ? 5 : 1;
+  double upperLimit = random ? 3 : 1;
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
+  #ifdef DEBUG
   printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  #endif
+
   std::default_random_engine re(seed);
   std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
   for (int i = 0; i < h_a.size(); i++)
-    h_a[i] = unif(re);
+    h_a[i] = floor(unif(re));
   for (int i = 0; i < h_b.size(); i++)
-    h_b[i] = unif(re);
+    h_b[i] = floor(unif(re));
   
 
   d_a = h_a;
   d_b = h_b;
-
+  
+  #ifdef DEBUG
   cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
   {
@@ -100,7 +111,7 @@ int main( int argc, char* argv[] )
   for (int i = 0; i < N; i++)
     cout << h_b[i] << " ";
   cout << endl;
-
+  #endif
 
   // vectors are unfortunatly not available on cuda device
   // but you can get the memory address, pass it to the device,
@@ -110,17 +121,30 @@ int main( int argc, char* argv[] )
   double * p_c = thrust::raw_pointer_cast(&c[0]);
 
   int blocks = (SIZE/THREADS+1); 
-  
+ 
+  performMults<<<blocks, THREADS>>>(p_a, p_b, N, SIZE);
+  cudaDeviceSynchronize(); 
   matrixMul<<<blocks, THREADS>>>(p_a, p_b, p_c, N, SIZE);
-
   cudaDeviceSynchronize();
 
   thrust::host_vector<double> result = c;
 
+  #ifdef DEBUG
   printf("\n\nresult:\n");
+  #endif
   for (int i = 0; i < result.size(); i++)
-    cout << "result[" << i << "] = " << result[i] << endl; 
-  
+    cout << result[i] << " ";
+  #ifdef DEBUG 
+  cout << endl;
+  #endif
+
+  #ifdef DEBUG
+  auto end = chrono::steady_clock::now();
+  cout << "Elapsed time in nanoseconds: "
+        << chrono::duration_cast<chrono::nanoseconds>(end - start).count()
+        << " ns" << endl;
+  #endif
+   
   return 0;
 } 
 
