@@ -13,3 +13,9 @@ mull1Debug: mull_1.cu
 
 mull2Debug: mull_2.cu
 	nvcc -std=c++11 -DDEBUG mull_2.cu -o parallel 
+
+mull1Timed: mull_1.cu
+	nvcc -std=c++11 -DTIMED mull_1.cu -o parallel
+
+mull2Timed: mull_2.cu
+	nvcc -std=c++11 -DTIMED mull_2.cu -o parallel 
