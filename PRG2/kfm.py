@@ -3,9 +3,9 @@
 import subprocess
 import re
 
-for i in range(2500, 4501, 200):
-	output_p = subprocess.run(["./parallel", "50", str(i), "r"], stdout=subprocess.PIPE, universal_newlines=True).stdout
-	output_s = subprocess.run(["./serial", "50", "r"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+for i in range(490000, 622000, 2000):
+	output_p = subprocess.run(["./parallel", "700", str(i), "r"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+	output_s = subprocess.run(["./serial", "700", "r"], stdout=subprocess.PIPE, universal_newlines=True).stdout
 	# f_e = (1/speedup - 1/p) / (1 - 1/p)
 	# parallel program should output total_threads time_nanoseconds
 	# serial program should output time_nanoseconds

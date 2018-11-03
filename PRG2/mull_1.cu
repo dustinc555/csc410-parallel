@@ -19,6 +19,7 @@
 __global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
 {
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
+
   int b_index = a_index % ROW_SIZE;
 
   if (a_index >= SIZE) return;
@@ -38,7 +39,12 @@ using namespace std;
 */
 __global__ void sumRows(double * a, double * c, const int ROW_SIZE, const int SIZE)
 {
+  #ifndef TIMED
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
+  #else
+  int a_index = blockIdx.x;
+  #endif
+
   int b_index = a_index % ROW_SIZE; // you can consider b_index the row id (0 start, ROW_SIZE-1 end)
   
   if (b_index == 0) // if we are a zero index, sum up the row up to but not including the next 0 row.
