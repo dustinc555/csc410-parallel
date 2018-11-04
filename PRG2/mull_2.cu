@@ -145,8 +145,12 @@ int main( int argc, char* argv[] )
   #ifdef DEBUG
   printf("\n\nresult:\n");
   #endif
+
+  #ifndef TIMED
   for (int i = 0; i < result.size(); i++)
     cout << result[i] << " ";
+  #endif
+
   #ifdef DEBUG 
   cout << endl;
   #endif

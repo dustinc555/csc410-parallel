@@ -14,6 +14,9 @@
 #include <random>
 #include <time.h>
 #include <chrono>
+#include <fstream>
+#include <string>
+#include <iomanip>
 
 
 __global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
@@ -39,11 +42,7 @@ using namespace std;
 */
 __global__ void sumRows(double * a, double * c, const int ROW_SIZE, const int SIZE)
 {
-  #ifndef TIMED
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
-  #else
-  int a_index = blockIdx.x;
-  #endif
 
   int b_index = a_index % ROW_SIZE; // you can consider b_index the row id (0 start, ROW_SIZE-1 end)
   
@@ -64,7 +63,7 @@ const unsigned THREADS = 512;
 
 void usage();
 
-
+using namespace std;
 /**** MAIN ***********************/
 /*********************************/
 int main( int argc, char* argv[] )
@@ -75,39 +74,48 @@ int main( int argc, char* argv[] )
   unsigned threads = THREADS;
   const int N = atoi(argv[1]);
   const int SIZE = N * N; // square matrix N by N
-
+  //int bytes_n = sizeof(double) * N;
+  //int bytes_size = sizeof(double) * SIZE;
+  
   thrust::host_vector<double> h_a(SIZE);
   thrust::host_vector<double> h_b(N);
   thrust::device_vector<double> d_a(SIZE, 1);
   thrust::device_vector<double> d_b(N, 1);
   thrust::device_vector<double> c(N);
-  
-  #ifndef TIMED 
+
+  #ifndef TEST
   bool random = argv[2][0] == 'r';
-  #else
-  bool random = argv[3][0] == 'r';
-  threads = atoi(argv[2]);
+
+  double lowerlimit = random ? 0 : 1;
+  double upperlimit = random ? 3 : 1;
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   #endif
 
-  double lowerLimit = random ? 0 : 1;
-  double upperLimit = random ? 3 : 1;
-  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
   #ifdef DEBUG
-  printf("upperLimit: %f  lowerLimit: %f\n", upperLimit, lowerLimit);
+  printf("upperLimit: %f  lowerLimit: %f\n", upperlimit, lowerlimit);
   #endif
-
-  std::default_random_engine re(seed);
-  std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
-  for (int i = 0; i < h_a.size(); i++)
-    h_a[i] = floor(unif(re));
-  for (int i = 0; i < h_b.size(); i++)
-    h_b[i] = floor(unif(re));
   
-
+  #ifndef TEST // fill the arrays ourselves
+  std::default_random_engine re(seed);
+  std::uniform_real_distribution<double> unif(lowerlimit,upperlimit);
+  for (int i = 0; i < SIZE; i++)
+    h_a[i] = floor(unif(re));
+  for (int i = 0; i < N; i++)
+    h_b[i] = floor(unif(re));
+  #else // load arrays from file
+  ifstream myfile("input.txt");
+  for (int i = 0; i < SIZE; i++)
+     myfile >> h_a[i];
+  for (int i = 0; i < N; i++)
+     myfile >> h_b[i];
+  myfile.close();
+  #endif
+  
+  
   d_a = h_a;
   d_b = h_b;
-  
+
   #ifdef DEBUG
   cout << "Matrix values:" << endl;
   for (int i = 0; i < SIZE; i++) 
@@ -132,13 +140,21 @@ int main( int argc, char* argv[] )
   unsigned blocks;
   // one thread per block, if doing the Karp-Flatt Metric
   #ifdef TIMED
-  blocks = threads;
-  threads = 1;
+  threads = atoi(argv[3]);
+  if (0 < threads) // the reason for this is for stress testing set thread values that can be greater than 1023
+  {
+    blocks = threads;
+    threads = 1;
+  }
+  else
+  {
+    threads = THREADS;
+    blocks = (SIZE / THREADS) + 1;
+  }
   #else
   // just make sure that there are enough threads
   blocks = (SIZE / threads) + 1;
   #endif
-
 
   // record action time 
   #ifdef TIMED
@@ -155,16 +171,15 @@ int main( int argc, char* argv[] )
   cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
   #endif
 
-
   thrust::host_vector<double> result = c;
 
   #ifdef DEBUG
   printf("\n\nresult:\n");
   #endif
-
+  
   #ifndef TIMED
-  for (int i = 0; i < result.size(); i++)
-    cout << result[i] << " ";
+  for (int i = 0; i < N; i++)
+    cout << fixed << setprecision(2) << result[i] << " ";
   #endif
 
   #ifdef DEBUG 
