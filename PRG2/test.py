@@ -5,7 +5,7 @@ import random
 
 
 subprocess.run(["make", "clean"], stdout=subprocess.PIPE, universal_newlines=True)
-subprocess.run(["make", "test"], stdout=subprocess.PIPE, universal_newlines=True)
+subprocess.run(["make", "all"], stdout=subprocess.PIPE, universal_newlines=True)
 
 
 for i in range(1, 10):

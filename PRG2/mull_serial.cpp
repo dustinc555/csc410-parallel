@@ -71,14 +71,18 @@ int main( int argc, char* argv[] )
   
 
   #ifdef DEBUG
+  cout << "matrix after muts:" << endl;
   cout << endl;
   for (int i = 0; i < SIZE; i++)
     cout << a[i] << " ";
 
   cout << endl;
+  cout << "vector values: " << endl;
   for (int i = 0; i < RS; i++)
-    cout << c[i] << " ";
+    cout << b[i] << " ";
+  cout << endl << "result: " << endl;
   #endif
+
 
 
   if (mode != 't')

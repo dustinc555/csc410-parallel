@@ -17,11 +17,11 @@ mull2Debug: mull_2.cu
 serialDebug: mull_serial.cpp
 	g++ -std=c++11 -DDEBUG mull_serial.cpp -o serial
 
-both: mull_1.cu mull_serial.cpp
+all: mull_1.cu mull_serial.cpp
 	make mull1
 	make serial
 
-bothDebug: mull_1.cu mull_serial.cpp
+allDebug: mull_1.cu mull_serial.cpp
 	make mull1Debug
 	make serialDebug
 clean:
