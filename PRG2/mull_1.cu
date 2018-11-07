@@ -18,7 +18,9 @@
 #include <string>
 #include <iomanip>
 
-
+/** performMults(double * arr, double * b, const int N, const int SIZE)
+*   For every ith row in matrix a, multiply a[i,j] by b[j]
+*/
 __global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
 {
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -35,7 +37,7 @@ __global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
 
 using namespace std;
 
-/** sumRows(double * arr, double * b, double * c, const int N, const int SIZE)
+/** sumRows(double * arr, double * c, const int N, const int SIZE)
 *   Expects arr to be a matrix, and c a result vector
 *   c[i] = sum(a[i,j] * b[i])
 *  
@@ -46,6 +48,23 @@ __global__ void sumRows(double * a, double * c, const int ROW_SIZE, const int SI
 
   int b_index = a_index % ROW_SIZE; // you can consider b_index the row id (0 start, ROW_SIZE-1 end)
   
+  /* a 3x3 matrix example
+  a index values: the specific element to operate on
+  0 1 2
+  3 4 5
+  6 7 8
+
+  c index values: where to add sum to
+  0 0 0
+  1 1 1
+  2 2 2
+
+  b index values: where we are in the row
+  0 1 2
+  0 1 2
+  0 1 2*/
+  
+   
   if (b_index == 0) // if we are a zero index, sum up the row up to but not including the next 0 row.
   {
     int local_c_sum = 0;
@@ -103,7 +122,7 @@ int main( int argc, char* argv[] )
   {
     bool random = values == 'r';
     double lowerlimit = random ? 0 : 1;
-    double upperlimit = random ? 3 : 1;
+    double upperlimit = random ? 10 : 1;
     #ifdef DEBUG
     printf("upperLimit: %f  lowerLimit: %f\n", upperlimit, lowerlimit);
     #endif
@@ -126,9 +145,13 @@ int main( int argc, char* argv[] )
   }
   
   /* thrust handles the copying of memory from host vectors to
-     device vectors with a simple assignment. */  
+     device vectors with a simple assignment. */ 
+
+  // record action time
+  auto start = chrono::steady_clock::now(); 
   d_a = h_a;
   d_b = h_b;
+  auto transfer = chrono::steady_clock::now();
 
   #ifdef DEBUG
   cout << "Matrix values:" << endl;
@@ -161,9 +184,9 @@ int main( int argc, char* argv[] )
      if (N > threads)
        cout << "Warning! incorrect number of threads will not perform correctly." << endl;
      #endif
- 
-     blocks = threads; // ensures that there are exactly as many given threads on the problem
-     threads = 1;
+     // assume threads is a multiple of 32 
+     blocks = threads/32; // ensures that there are exactly as many given threads on the problem
+     threads = 32;
   }
   else
   {
@@ -176,20 +199,35 @@ int main( int argc, char* argv[] )
   #endif
 
   // record action time 
-  auto start = chrono::steady_clock::now();
+  //auto start = chrono::steady_clock::now();
  
 
   performMults<<<blocks, threads>>>(p_a, p_b, N, SIZE);
-  cudaDeviceSynchronize(); 
+  cudaDeviceSynchronize();
+
+  #ifdef DEBUG
+  h_a = d_a;
+  cout << "Matrix values after mulltiplication:" << endl;
+  for (int i = 0; i < SIZE; i++)
+  {
+    cout << h_a[i] << " ";
+    if ((i + 1) % N == 0) cout << endl;
+  }
+  #endif 
+
   sumRows<<<blocks, threads>>>(p_a, p_c, N, SIZE);
   cudaDeviceSynchronize();
 
-  
   auto end = chrono::steady_clock::now();
-  
+
   // print out time took if requested
+  #ifndef DEBUG // if debug dont check just print
   if (mode == 't')
-    cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+  #endif
+  #ifdef DEBUG // with a title too
+  cout << "time ns:\n";
+  #endif
+  cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
   
   thrust::host_vector<double> result = c;
 
@@ -197,7 +235,9 @@ int main( int argc, char* argv[] )
   printf("\n\nresult:\n");
   #endif
   
+  #ifndef DEBUG
   if (mode == 'v')
+  #endif
     for (int i = 0; i < N; i++)
       cout << fixed << setprecision(2) << result[i] << " ";
 

@@ -46,9 +46,9 @@ int main( int argc, char* argv[] )
     std::uniform_real_distribution<double> unif(lowerLimit,upperLimit);
 
     for (int i = 0; i < a.size(); i++)
-      a[i] = unif(re);
+      a[i] = floor(unif(re));
     for (int i = 0; i < b.size(); i++)
-      b[i] = unif(re);
+      b[i] = floor(unif(re));
   }
   else
   {
@@ -83,6 +83,7 @@ int main( int argc, char* argv[] )
   cout << endl << "result: " << endl;
   #endif
 
+  auto end = chrono::steady_clock::now();
 
 
   if (mode != 't')
@@ -92,7 +93,6 @@ int main( int argc, char* argv[] )
   }
   else // the mode is v
   {
-    auto end = chrono::steady_clock::now();
     cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
   }
 
