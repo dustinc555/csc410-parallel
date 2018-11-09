@@ -14,26 +14,15 @@ mull1Debug: mull_1.cu
 mull2Debug: mull_2.cu
 	nvcc -std=c++11 -DDEBUG mull_2.cu -o parallel 
 
+serialDebug: mull_serial.cpp
+	g++ -std=c++11 -DDEBUG mull_serial.cpp -o serial
 
-mull1Timed: mull_1.cu
-	nvcc -std=c++11 -DTIMED mull_1.cu -o parallel
-
-mull2Timed: mull_2.cu
-	nvcc -std=c++11 -DTIMED mull_2.cu -o parallel
-
-
-serialTest: mull_serial.cpp
-	g++ -std=c++11 -DTEST mull_serial.cpp -o serial
-
-mull1Test: mull_1.cu
-	nvcc -std=c++11 -DTEST mull_1.cu -o parallel
-
-test: mull_1.cu mull_serial.cpp 
-	make serialTest
-	make mull1Test
-
-timed: mull_1.cu mull_serial.cpp
+all: mull_1.cu mull_serial.cpp
+	make mull1
 	make serial
-	make mull1Timed
+
+allDebug: mull_1.cu mull_serial.cpp
+	make mull1Debug
+	make serialDebug
 clean:
 	@rm -f serial parallel

@@ -18,7 +18,9 @@
 #include <string>
 #include <iomanip>
 
-
+/** performMults(double * arr, double * b, const int N, const int SIZE)
+*   For every ith row in matrix a, multiply a[i,j] by b[j]
+*/
 __global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
 {
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -35,7 +37,7 @@ __global__ void performMults(double * a, double * b, int ROW_SIZE, int SIZE)
 
 using namespace std;
 
-/** sumRows(double * arr, double * b, double * c, const int N, const int SIZE)
+/** sumRows(double * arr, double * c, const int N, const int SIZE)
 *   Expects arr to be a matrix, and c a result vector
 *   c[i] = sum(a[i,j] * b[i])
 *  
@@ -46,6 +48,23 @@ __global__ void sumRows(double * a, double * c, const int ROW_SIZE, const int SI
 
   int b_index = a_index % ROW_SIZE; // you can consider b_index the row id (0 start, ROW_SIZE-1 end)
   
+  /* a 3x3 matrix example
+  a index values: the specific element to operate on
+  0 1 2
+  3 4 5
+  6 7 8
+
+  c index values: where to add sum to
+  0 0 0
+  1 1 1
+  2 2 2
+
+  b index values: where we are in the row
+  0 1 2
+  0 1 2
+  0 1 2*/
+  
+   
   if (b_index == 0) // if we are a zero index, sum up the row up to but not including the next 0 row.
   {
     int local_c_sum = 0;
@@ -68,14 +87,29 @@ using namespace std;
 /*********************************/
 int main( int argc, char* argv[] )
 {
-  if ( argc < 3 )
-    usage();
  
-  unsigned threads = THREADS;
-  const int N = atoi(argv[1]);
+  int N = 0;      // row size
+  char mode = 'v'; // what to print
+  int threads = 0;  // total amount of threads if 0 defaults to 512 per block
+  char values = '1'; // what to fill vectors with
+  switch ( argc )
+  {
+    case 5: 
+      threads = atoi(argv[4]);
+    case 4:
+      values = argv[3][0];
+    case 3:
+      mode = argv[2][0];
+    case 2:
+      N = atoi(argv[1]); 
+      break;
+    default:
+      usage();
+  }
+  
+  
+  
   const int SIZE = N * N; // square matrix N by N
-  //int bytes_n = sizeof(double) * N;
-  //int bytes_size = sizeof(double) * SIZE;
   
   thrust::host_vector<double> h_a(SIZE);
   thrust::host_vector<double> h_b(N);
@@ -83,38 +117,41 @@ int main( int argc, char* argv[] )
   thrust::device_vector<double> d_b(N, 1);
   thrust::device_vector<double> c(N);
 
-  #ifndef TEST
-  bool random = argv[2][0] == 'r';
-
-  double lowerlimit = random ? 0 : 1;
-  double upperlimit = random ? 3 : 1;
-  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  #endif
-
-
-  #ifdef DEBUG
-  printf("upperLimit: %f  lowerLimit: %f\n", upperlimit, lowerlimit);
-  #endif
+  // if mode is load, load vectors from file, otherwise generate them ourselves
+  if (values != 'l')
+  {
+    bool random = values == 'r';
+    double lowerlimit = random ? 0 : 1;
+    double upperlimit = random ? 10 : 1;
+    #ifdef DEBUG
+    printf("upperLimit: %f  lowerLimit: %f\n", upperlimit, lowerlimit);
+    #endif
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine re(seed);
+    std::uniform_real_distribution<double> unif(lowerlimit,upperlimit);
+    for (int i = 0; i < SIZE; i++)
+      h_a[i] = floor(unif(re));
+    for (int i = 0; i < N; i++)
+      h_b[i] = floor(unif(re));
+  }
+  else // load vectors from file
+  { 
+    ifstream myfile("input.txt");
+    for (int i = 0; i < SIZE; i++)
+       myfile >> h_a[i];
+    for (int i = 0; i < N; i++)
+       myfile >> h_b[i];
+    myfile.close();
+  }
   
-  #ifndef TEST // fill the arrays ourselves
-  std::default_random_engine re(seed);
-  std::uniform_real_distribution<double> unif(lowerlimit,upperlimit);
-  for (int i = 0; i < SIZE; i++)
-    h_a[i] = floor(unif(re));
-  for (int i = 0; i < N; i++)
-    h_b[i] = floor(unif(re));
-  #else // load arrays from file
-  ifstream myfile("input.txt");
-  for (int i = 0; i < SIZE; i++)
-     myfile >> h_a[i];
-  for (int i = 0; i < N; i++)
-     myfile >> h_b[i];
-  myfile.close();
-  #endif
-  
-  
+  /* thrust handles the copying of memory from host vectors to
+     device vectors with a simple assignment. */ 
+
+  // record action time
+  auto start = chrono::steady_clock::now(); 
   d_a = h_a;
   d_b = h_b;
+  auto transfer = chrono::steady_clock::now();
 
   #ifdef DEBUG
   cout << "Matrix values:" << endl;
@@ -139,48 +176,70 @@ int main( int argc, char* argv[] )
 
   unsigned blocks;
   // one thread per block, if doing the Karp-Flatt Metric
-  #ifdef TIMED
-  threads = atoi(argv[3]);
-  if (0 < threads) // the reason for this is for stress testing set thread values that can be greater than 1023
+  // if we were given a set amount of threads
+  // set to it
+  if ( threads )
   {
-    blocks = threads;
-    threads = 1;
+     #ifdef DEBUG
+     if (N > threads)
+       cout << "Warning! incorrect number of threads will not perform correctly." << endl;
+     #endif
+     // assume threads is a multiple of 32 
+     blocks = threads/32; // ensures that there are exactly as many given threads on the problem
+     threads = 32;
   }
   else
   {
     threads = THREADS;
     blocks = (SIZE / THREADS) + 1;
   }
-  #else
-  // just make sure that there are enough threads
-  blocks = (SIZE / threads) + 1;
+
+  #ifdef DEBUG
+    cout << "blocks: " << blocks << " threads: " << threads << endl;
   #endif
 
   // record action time 
-  #ifdef TIMED
-  auto start = chrono::steady_clock::now();
-  #endif
+  //auto start = chrono::steady_clock::now();
+ 
 
   performMults<<<blocks, threads>>>(p_a, p_b, N, SIZE);
-  cudaDeviceSynchronize(); 
+  cudaDeviceSynchronize();
+
+  #ifdef DEBUG
+  h_a = d_a;
+  cout << "Matrix values after mulltiplication:" << endl;
+  for (int i = 0; i < SIZE; i++)
+  {
+    cout << h_a[i] << " ";
+    if ((i + 1) % N == 0) cout << endl;
+  }
+  #endif 
+
   sumRows<<<blocks, threads>>>(p_a, p_c, N, SIZE);
   cudaDeviceSynchronize();
 
-  #ifdef TIMED
   auto end = chrono::steady_clock::now();
-  cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
-  #endif
 
+  // print out time took if requested
+  #ifndef DEBUG // if debug dont check just print
+  if (mode == 't')
+  #endif
+  #ifdef DEBUG // with a title too
+  cout << "time ns:\n";
+  #endif
+  cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+  
   thrust::host_vector<double> result = c;
 
   #ifdef DEBUG
   printf("\n\nresult:\n");
   #endif
   
-  #ifndef TIMED
-  for (int i = 0; i < N; i++)
-    cout << fixed << setprecision(2) << result[i] << " ";
+  #ifndef DEBUG
+  if (mode == 'v')
   #endif
+    for (int i = 0; i < N; i++)
+      cout << fixed << setprecision(2) << result[i] << " ";
 
   #ifdef DEBUG 
   cout << endl;
@@ -192,10 +251,8 @@ int main( int argc, char* argv[] )
 
 void usage()
 {
-  printf("./main <N> <mode>\n");
-  printf("mode: 1 to fill matrix and vector with all 1's.\n");
-  printf("\tr for all random numbers.\n");
-  printf("if make Timed: ./main <N> <threads> <mode>\n");
+  printf("./main <row size> <mode> <values> <threads>\n");
+  printf("<row size> : required\n<mode> : v to print result, t to print time nanoseconds\n<values> : 1 all 1 values, r all random, l load from file.\n");
   exit(INCORRECT_NUM_ARGS_ERROR);
 }
 

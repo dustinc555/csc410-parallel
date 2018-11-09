@@ -5,10 +5,10 @@ import random
 
 
 subprocess.run(["make", "clean"], stdout=subprocess.PIPE, universal_newlines=True)
-subprocess.run(["make", "test"], stdout=subprocess.PIPE, universal_newlines=True)
+subprocess.run(["make", "all"], stdout=subprocess.PIPE, universal_newlines=True)
 
 
-for i in range(1, 10):
+for i in range(1, 4):
 	file = open("input.txt", "w")
 	matrix = ""
 	vector = ""
@@ -23,7 +23,8 @@ for i in range(1, 10):
 	file.write(vector)
 	file.close()
 		
-	output_p = subprocess.run(["./parallel", str(i), "1"], stdout=subprocess.PIPE, universal_newlines=True).stdout
-	output_s = subprocess.run(["./serial", str(i), "1"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+	output_p = subprocess.run(["./parallel", str(i), "v", "l"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+	output_s = subprocess.run(["./serial", str(i), "v", "l"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+	print("Case " + str(i) + " ----------------------------------------------------")
 	print("Parallel result:\n" + output_p + "\n\nSerial Result:\n" + output_s + "\n")
 
