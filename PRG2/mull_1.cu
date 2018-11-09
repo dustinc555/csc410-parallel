@@ -42,10 +42,10 @@ using namespace std;
 *   c[i] = sum(a[i,j] * b[i])
 *  
 */
-__global__ void sumRows(double * a, double * c, const int ROW_SIZE, const int SIZE)
+__global__ void sumRows(double * a, double * b, double * c, const int ROW_SIZE, const int SIZE)
 {
   int a_index = blockIdx.x * blockDim.x + threadIdx.x;
-
+  int c_index = a_index / ROW_SIZE;
   int b_index = a_index % ROW_SIZE; // you can consider b_index the row id (0 start, ROW_SIZE-1 end)
   
   /* a 3x3 matrix example
@@ -69,9 +69,7 @@ __global__ void sumRows(double * a, double * c, const int ROW_SIZE, const int SI
   {
     int local_c_sum = 0;
     for (int i = 0; i < ROW_SIZE; i++)
-      local_c_sum += a[a_index + i];
-
-    int c_index = a_index / ROW_SIZE;
+      local_c_sum += a[c_index * ROW_SIZE + i] * b[i];
     c[c_index] = local_c_sum; 
   }
   // this method is bad because its tasks size grow with the problem instead of the number of tasks. 
@@ -83,6 +81,8 @@ const unsigned THREADS = 512;
 void usage();
 
 using namespace std;
+
+
 /**** MAIN ***********************/
 /*********************************/
 int main( int argc, char* argv[] )
@@ -202,8 +202,8 @@ int main( int argc, char* argv[] )
   //auto start = chrono::steady_clock::now();
  
 
-  performMults<<<blocks, threads>>>(p_a, p_b, N, SIZE);
-  cudaDeviceSynchronize();
+  //performMults<<<blocks, threads>>>(p_a, p_b, N, SIZE);
+  //cudaDeviceSynchronize();
 
   #ifdef DEBUG
   h_a = d_a;
@@ -215,7 +215,7 @@ int main( int argc, char* argv[] )
   }
   #endif 
 
-  sumRows<<<blocks, threads>>>(p_a, p_c, N, SIZE);
+  sumRows<<<blocks, threads>>>(p_a, p_b, p_c, N, SIZE);
   cudaDeviceSynchronize();
 
   auto end = chrono::steady_clock::now();
@@ -228,7 +228,6 @@ int main( int argc, char* argv[] )
   cout << "time ns:\n";
   #endif
   cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count();
-  
   thrust::host_vector<double> result = c;
 
   #ifdef DEBUG
