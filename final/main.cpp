@@ -2,8 +2,10 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <mpi.h>
 #include <bitset>
+
+#include <omp.h>
+#include <mpi.h>
 
 using namespace std;
 
@@ -155,7 +157,7 @@ void slave(int p, int n, int id)
 		if (board[0] == -1)
 		{
 			is_valid = -id; 
-			cout << "sending: " << is_valid << " to " << collectorID << endl;
+			//cout << "sending: " << is_valid << " to " << collectorID << endl;
 
                 	MPI_Send(       &is_valid,
                                 	1,
@@ -165,15 +167,35 @@ void slave(int p, int n, int id)
                                 	MPI_COMM_WORLD  );
 			break; // end this thread
 		}
+		else  // do work
+        {
+            // is_valid starts true tell proven false
+            int thread_count = 2;
+            int thread;
+    
+            #pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) reduction(=:is_valid)
+            for (i = 0; i < n; i++)
+            {
+                int my_height = board[i];
+                
+                // check all other peices
+                for (int j = 0; j < n; j++)
+                {
+                    
+                }
+            }
+            
+            
+            
+            //cout << "sending: " << is_valid << " to " << collectorID << endl;
 
-		cout << "sending: " << is_valid << " to " << collectorID << endl;
-
-		MPI_Send(	&is_valid,
-				1,
-				MPI_INT,
-				collectorID,
-				0,
-				MPI_COMM_WORLD	);
+            MPI_Send(	&is_valid,
+                    1,
+                    MPI_INT,
+                    collectorID,
+                    0,
+                    MPI_COMM_WORLD	);
+        }
 	}	
 			
 
