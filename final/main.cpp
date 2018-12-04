@@ -1,14 +1,15 @@
+#include <math.h>
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <mpi.h>
+#include <bitset>
 
 using namespace std;
 
 void permutor(int p, int n);
 void collector(int p);
 void slave(int p, int n, int id);
-bool slavesWorking(vector<bool> & slaves);
 
 int permutorID;
 int collectorID;
@@ -28,8 +29,8 @@ int main(int argc, char **argv)
 	permutorID = 0;
 	collectorID = p - 1;
 
-	cout << "n: " << n << endl;
-	cout << "p: " << p << endl;
+	//cout << "n: " << n << endl;
+	//cout << "p: " << p << endl;
        
 	if (id == 0)		permutor(p, n);
 	else if (id == p - 1)	collector(p); // i know it looks weird, but i want to make it so that you can have any number threads in the future, not perfect match size
@@ -58,7 +59,7 @@ void permutor(int p, int n)
 				0,
 				MPI_COMM_WORLD	);
 		i++;
-		if (i == p - 2)	i = 1;	// wrap around
+		if (i == p - 1)	i = 1;	// wrap around
 	} while (next_permutation(board.begin(), board.end()));
 
 	// send quit message to slaves
@@ -80,15 +81,25 @@ void collector(int p)
 	vector<bool> slaves(p);
 	slaves[p - 1] = false;
 	slaves[0] = false;
-	for (int i = 1; i < p-2; i++)	// assume all slaves working
-		slaves[i] = true;
+	
+	/* set a flag bit for every slave
+	e.x. p = 4, 
+		0 = permutor
+		3 = permutor
+		1, 2 = slaves
+		we get: 0110
+	*/
+	int flags = (1 << (p - 1)) - 2; 
+
+	//std::bitset<32> y(flags);
+	//cout << "Flags: " << y << endl;
 
 	int solutions = 0;
 	int is_solution;
 
 
 	// While we are not done and 	
-	while (slavesWorking(slaves)) // as long as there are active slave servers
+	while (flags) // as long as there are active slave servers
 	{
 		MPI_Recv(	&is_solution,
 				1,
@@ -98,10 +109,15 @@ void collector(int p)
 				MPI_COMM_WORLD,
 				MPI_STATUS_IGNORE	);
 		cout << "Collector received solution: " << is_solution << " solutions: " << solutions << endl;
-		if (is_solution < 0)	
-			slaves[abs(is_solution)] = false; // this slave has stopped working
+		if (is_solution < 0) {
+			//std::bitset<32> y((int) (pow(2, (abs(is_solution)))));
+        		//cout << "Received: " << y << endl;	
+			flags &= ~( 1 << (abs(is_solution))); // this slave has stopped working, flip its switch
+		}
 		else
 			solutions += is_solution;
+
+		//cout << "Flags: " << flags << endl;
 	}
 
 	cout << "Total Solutions: " << solutions << endl;
@@ -129,10 +145,10 @@ void slave(int p, int n, int id)
 				MPI_COMM_WORLD,
 				MPI_STATUS_IGNORE	);
 
-		cout << "slave received: ";
+		/*cout << "slave received: ";
 		for (int i = 0; i < n; i++)
 			cout << board[i]<< " ";
-		cout << endl;
+		cout << endl;*/
 
 
 		// check if its time to stop
@@ -142,11 +158,11 @@ void slave(int p, int n, int id)
 			cout << "sending: " << is_valid << " to " << collectorID << endl;
 
                 	MPI_Send(       &is_valid,
-                                1,
-                                MPI_INT,
-                                collectorID,
-                                0,
-                                MPI_COMM_WORLD  );
+                                	1,
+                                	MPI_INT,
+                                	collectorID,
+                                	0,
+                                	MPI_COMM_WORLD  );
 			break; // end this thread
 		}
 
@@ -163,11 +179,3 @@ void slave(int p, int n, int id)
 
 }
 
-bool slavesWorking(vector<bool> & slaves)
-{
-	bool sum = 0;
-	for (int i = 0; i < slaves.size(); i++)
-		sum += slaves[i];
-	cout << "sum: " << sum << endl;
-	return sum;
-}
