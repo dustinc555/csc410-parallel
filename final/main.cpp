@@ -110,7 +110,7 @@ void collector(int p)
 				0,
 				MPI_COMM_WORLD,
 				MPI_STATUS_IGNORE	);
-		cout << "Collector received solution: " << is_solution << " solutions: " << solutions << endl;
+		//cout << "Collector received solution: " << is_solution << " solutions: " << solutions << endl;
 		if (is_solution < 0) {
 			//std::bitset<32> y((int) (pow(2, (abs(is_solution)))));
         		//cout << "Received: " << y << endl;	
@@ -147,12 +147,12 @@ void slave(int p, int n, int id)
 				0,
 				MPI_COMM_WORLD,
 				MPI_STATUS_IGNORE	);
-
-		/*cout << "slave received: ";
+        /*
+		cout << "slave received: ";
 		for (int i = 0; i < n; i++)
 			cout << board[i]<< " ";
-		cout << endl;*/
-
+		cout << endl;
+        */
 
 		// check if its time to stop
 		if (board[0] == -1)
@@ -176,29 +176,38 @@ void slave(int p, int n, int id)
             #pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) reduction(=:is_valid)
             for (int i = 0; i < n && is_valid; i++)
             {
-		// we are checking this i against the entire board
+                // we are checking this i against the entire board
                 int my_height = board[i];
-                
+                /*
+                cout << "my i: " << i << endl;
+                cout << "my_height: " << my_height << endl;
+                */
                 // check all other peices
                 for (int j = 0; j < n && is_valid; j++)
                 {
-			/* to be diagonal means concurrent distance 
-			   it has a slope of exactly 1 or -1 with another element
-			   example: board[3] = 2, and board[2] = 1
-			   distance from pos 3 and pos 2 is 1,
-                           (board[3] + or - dist) == 1 
-			   this holds true to the end */
-                	int dist = abs(i - j);
-			if (elem - dist == board[i] || elem + dist == board[i])
-				is_valid = false;
-			
+                    int dist = abs(i - j);
+                    //cout << "i: " << i << " j: " << j << " dist: " << dist << endl;
+                    /* to be diagonal means concurrent distance 
+                    it has a slope of exactly 1 or -1 with another element
+                    example: board[3] = 2, and board[2] = 1
+                    distance from pos 3 and pos 2 is 1,
+                                (board[3] + or - dist) == 1 
+                    this holds true to the end */
+                    //cout << "minus case: " << my_height - dist == board[i] << endl;
+                    //cout << "plus case: " << my_height + dist == board[i] << endl;
+                    
+                    if (    (my_height - dist == board[j] || my_height + dist == board[j]) 
+                            && j != i)
+                        is_valid = false;
+                
                 }
             }
             
             
             
             //cout << "sending: " << is_valid << " to " << collectorID << endl;
-
+            
+            // if this is a valid solution sends 1 else 0 
             MPI_Send(	&is_valid,
                     1,
                     MPI_INT,
