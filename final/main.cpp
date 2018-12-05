@@ -129,13 +129,14 @@ void slave(int p, int n, int id)
 {
 	int collectorID = p - 1;
 	int permutorID = 0;
+	bool working = true;
 	// receive a board
 	// for each element in board
 	//	if (not out of range)
 	// 		if neighbor == elem +- dist 
 	vector<int> board(n);
 
-	while (true)
+	while (working)
 	{
 		int is_valid = 1;
 		
@@ -165,23 +166,32 @@ void slave(int p, int n, int id)
                                 	collectorID,
                                 	0,
                                 	MPI_COMM_WORLD  );
-			break; // end this thread
+			working = false; // end this thread
 		}
 		else  // do work
         {
             // is_valid starts true tell proven false
             int thread_count = 2;
-            int thread;
     
             #pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) reduction(=:is_valid)
-            for (i = 0; i < n; i++)
+            for (int i = 0; i < n && is_valid; i++)
             {
+		// we are checking this i against the entire board
                 int my_height = board[i];
                 
                 // check all other peices
-                for (int j = 0; j < n; j++)
+                for (int j = 0; j < n && is_valid; j++)
                 {
-                    
+			/* to be diagonal means concurrent distance 
+			   it has a slope of exactly 1 or -1 with another element
+			   example: board[3] = 2, and board[2] = 1
+			   distance from pos 3 and pos 2 is 1,
+                           (board[3] + or - dist) == 1 
+			   this holds true to the end */
+                	int dist = abs(i - j);
+			if (elem - dist == board[i] || elem + dist == board[i])
+				is_valid = false;
+			
                 }
             }
             
@@ -197,7 +207,5 @@ void slave(int p, int n, int id)
                     MPI_COMM_WORLD	);
         }
 	}	
-			
-
 }
 
