@@ -45,6 +45,11 @@ int main(int argc, char **argv)
 
 void permutor(int p, int n)
 {
+	int len;
+	char p_name[100];
+        MPI_Get_processor_name(p_name, &len);
+        cout << p_name << " assigned as permutor" << endl;
+
 	// make intial (sorted) array, send it
 	vector<int> board(n);
 	for (int i = 0; i < n; i++)
@@ -80,6 +85,11 @@ void permutor(int p, int n)
 
 void collector(int p)
 {
+	int len;
+	char p_name[100];
+        MPI_Get_processor_name(p_name, &len);
+        cout << p_name << " assigned as collector" << endl;
+
 	vector<bool> slaves(p);
 	slaves[p - 1] = false;
 	slaves[0] = false;
@@ -127,6 +137,11 @@ void collector(int p)
 
 void slave(int p, int n, int id)
 {
+	int len;
+	char p_name[100];
+        MPI_Get_processor_name(p_name, &len);
+	cout << p_name << " assigned as slave" << endl;
+
 	int collectorID = p - 1;
 	int permutorID = 0;
 	bool working = true;
@@ -147,12 +162,12 @@ void slave(int p, int n, int id)
 				0,
 				MPI_COMM_WORLD,
 				MPI_STATUS_IGNORE	);
-        /*
-		cout << "slave received: ";
+
+		cout << p_name << " received job: ";
 		for (int i = 0; i < n; i++)
 			cout << board[i]<< " ";
 		cout << endl;
-        */
+        
 
 		// check if its time to stop
 		if (board[0] == -1)
@@ -171,7 +186,7 @@ void slave(int p, int n, int id)
 		else  // do work
         {
             // is_valid starts true tell proven false
-            int thread_count = 2;
+            int thread_count = 6;
     
             #pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) reduction(=:is_valid)
             for (int i = 0; i < n && is_valid; i++)
