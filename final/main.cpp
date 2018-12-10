@@ -166,6 +166,7 @@ void slave(int p, int n, int id, int o, int threads)
 	int collectorID = p - 1;
 	int permutorID = 0;
 	bool working = true;
+	int total_solutions = 0;
 	// receive a board
 	// for each element in board
 	//	if (not out of range)
@@ -251,18 +252,20 @@ void slave(int p, int n, int id, int o, int threads)
 					cout << ">\n";
 				}
 
-				// if this is a valid solution sends 1 else 0 
-				MPI_Send(	&is_valid,
-						1,
-						MPI_INT,
-						collectorID,
-						0,
-						MPI_COMM_WORLD	);
+				// if this is a valid solution sends 1 else 0
+				total_solutions++; 
 			}
 
 			std::next_permutation(board.begin(), board.end()); 
 		}
 	}
+
+	MPI_Send(       &total_solutions,
+        		1,
+                        MPI_INT,
+                        collectorID,
+                        0,
+                        MPI_COMM_WORLD  );
 
 	int shutdown = -id; // tell collector we are done
 	MPI_Send(	&shutdown,
