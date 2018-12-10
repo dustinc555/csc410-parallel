@@ -13,7 +13,7 @@ for i in range(1, 17):
 	
 	# RUN PARALLEL #
 	start = datetime.datetime.now()		
-	p_output = subprocess.run(["mpirun", "-np", "12", "./parallel", str(i), "0", "1"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+	p_output = subprocess.run(["mpirun", "-np", "12", "./nqueens", str(i), "0", "1"], stdout=subprocess.PIPE, universal_newlines=True).stdout
 	end = datetime.datetime.now()
 	parallel_runtime = end - start
 
