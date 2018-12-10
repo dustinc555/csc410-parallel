@@ -92,10 +92,6 @@ void collector(int p)
         MPI_Get_processor_name(p_name, &len);
         cout << p_name << " assigned as collector" << endl;
 	*/
-
-	vector<bool> slaves(p);
-	slaves[p - 1] = false;
-	slaves[0] = false;
 	
 	/* set a flag bit for every slave
 	e.x. p = 4, 
@@ -232,8 +228,8 @@ void slave(int p, int n, int id, int o)
 				if (o)
 				{
 					cout << "Solution found: <";
-					for (auto i : board)
-						cout << i << " ";
+					for (int i = 0; i < board.size(); i++)
+						cout << board[i] << " ";
 					cout << ">\n";
 				}
 
