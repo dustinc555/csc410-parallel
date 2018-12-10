@@ -9,9 +9,10 @@
 
 using namespace std;
 
-void permutor(int p, int n);
+void permutor(int p, int n, int threads);
 void collector(int p);
-void slave(int p, int n, int id, int o);
+void slave(int p, int n, int id, int o, int threads);
+int factorial(int n);
 
 int permutorID;
 int collectorID;
@@ -24,6 +25,7 @@ int main(int argc, char **argv)
 	int collectorID = p - 1;
 	int n = atoi(argv[1]);  
 	int o = atoi(argv[2]); // 0 to not print 1 to print
+	int thread_count = atoi(argv[3]);
 
 	MPI_Init( &argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &id);
@@ -33,17 +35,18 @@ int main(int argc, char **argv)
 	collectorID = p - 1;
 
        
-	if (id == 0)			permutor(p, n);
+	if (id == 0)			permutor(p, n, thread_count);
 	else if (id == p - 1)	collector(p);
-	else					slave(p, n, id, o);	
+	else					slave(p, n, id, o, thread_count);	
 
 
 	MPI_Finalize();
 	return 0;
 }
 
-void permutor(int p, int n)
+void permutor(int p, int n, int threads)
 {
+
 	/*
 	int len;
 	char p_name[100];
@@ -56,19 +59,30 @@ void permutor(int p, int n)
 	for (int i = 0; i < n; i++)
 		board[i] = i;
 	
-	int i = 1;
-	do 
+	int i;
+	int j = 1; // used to send messages
+	int thread_count = threads;
+
+	
+	#pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) 
+	for (i = 0; i < board.size(); i++)
 	{
-		// send board to thread i
-		MPI_Send(	&board[0],
-				board.size(),
+		int slaveID = (i % (p - 2)) + 1;
+
+		// the diagonal rotations are not required, only the first one for case 1.
+		vector<int> vprime = board;
+
+		std::rotate(vprime.begin(), vprime.begin() + i, vprime.begin() + i + 1);
+
+		MPI_Send(	&vprime[0],
+				vprime.size(),
 				MPI_INT,
-				i,
+				slaveID,
 				0,
 				MPI_COMM_WORLD	);
-		i++;
-		if (i == p - 1)	i = 1;	// wrap around
-	} while (next_permutation(board.begin(), board.end()));
+	}
+
+	cout << "ALL ROTATIONS SENT" << endl;
 
 	// send quit message to slaves
 	board[0] = -1;
@@ -82,7 +96,9 @@ void permutor(int p, int n)
                                 MPI_COMM_WORLD	);
 		
 	}
+
 }
+
 
 void collector(int p)
 {
@@ -138,7 +154,7 @@ void collector(int p)
 	cout << "Total Solutions: " << solutions << endl;
 }
 
-void slave(int p, int n, int id, int o)
+void slave(int p, int n, int id, int o, int threads)
 {
 	/*
 	int len;
@@ -156,10 +172,14 @@ void slave(int p, int n, int id, int o)
 	// 		if neighbor == elem +- dist 
 	vector<int> board(n);
 
+	int permutes = factorial(n-1); // each slave handles one lexigraphical set of permutes
+	//cout << "permutes: " << permutes << " n: " << n << endl;
+
+
 	while (working)
 	{
-		int is_valid = 1;
-		
+		int hasDone = 0;
+
 		MPI_Recv(	&board[0],
 				n,
 				MPI_INT,
@@ -168,72 +188,66 @@ void slave(int p, int n, int id, int o)
 				MPI_COMM_WORLD,
 				MPI_STATUS_IGNORE	);
 
+		if (board[0] == -1)	break; // we are done
+
 		/*
 		cout << p_name << " received job: ";
 		for (int i = 0; i < n; i++)
 			cout << board[i]<< " ";
 		cout << endl;
-		*/        
+		*/      
 
+		// is_valid starts true tell proven false
+		int thread_count = threads;
 
-		// check if its time to stop
-		if (board[0] == -1)
+		for (int k = 0; k < permutes; k++)
 		{
-			is_valid = -id; 
-			//cout << "sending: " << is_valid << " to " << collectorID << endl;
+			/*
+			cout << p_name << " working on: ";
+			for (int i = 0; i < n; i++)
+				cout << board[i]<< " ";
+			cout << endl;
+			*/
+			bool is_valid = true;
 
-                	MPI_Send(       &is_valid,
-                                	1,
-                                	MPI_INT,
-                                	collectorID,
-                                	0,
-                                	MPI_COMM_WORLD  );
-			working = false; // end this thread
-		}
-		else  // do work
-        {
-            // is_valid starts true tell proven false
-            int thread_count = 1;
-    
-            #pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) reduction(=:is_valid)
-            for (int i = 0; i < n && is_valid; i++)
-            {
-                // we are checking this i against the entire board
-                int my_height = board[i];
-                /*
-                cout << "my i: " << i << endl;
-                cout << "my_height: " << my_height << endl;
-                */
-                // check all other peices
-                for (int j = 0; j < n && is_valid; j++)
-                {
-                    int dist = abs(i - j);
-                    //cout << "i: " << i << " j: " << j << " dist: " << dist << endl;
-                    /* to be diagonal means concurrent distance 
-                    it has a slope of exactly 1 or -1 with another element
-                    example: board[3] = 2, and board[2] = 1
-                    distance from pos 3 and pos 2 is 1,
-                                (board[3] + or - dist) == 1 
-                    this holds true to the end */
-                    //cout << "minus case: " << my_height - dist == board[i] << endl;
-                    //cout << "plus case: " << my_height + dist == board[i] << endl;
-                    
-                    if (    (my_height - dist == board[j] || my_height + dist == board[j]) 
-                            && j != i)
-                        is_valid = false;
-                
-                }
-            }
-            
-            
-            if (is_valid)
+			#pragma omp parallel for num_threads(thread_count) schedule(dynamic, 1) reduction(=:is_valid)
+			for (int i = 0; i < n && is_valid; i++)
+			{
+				// we are checking this i against the entire board
+				int my_height = board[i];
+				/*
+				cout << "my i: " << i << endl;
+				cout << "my_height: " << my_height << endl;
+				*/
+				// check all other peices
+				for (int j = 0; j < n && is_valid; j++)
+				{
+					int dist = abs(i - j);
+					//cout << "i: " << i << " j: " << j << " dist: " << dist << endl;
+					/* to be diagonal means concurrent distance 
+					it has a slope of exactly 1 or -1 with another element
+					example: board[3] = 2, and board[2] = 1
+					distance from pos 3 and pos 2 is 1,
+								(board[3] + or - dist) == 1 
+					this holds true to the end */
+					//cout << "minus case: " << my_height - dist == board[i] << endl;
+					//cout << "plus case: " << my_height + dist == board[i] << endl;
+					
+					if (    (my_height - dist == board[j] || my_height + dist == board[j]) 
+							&& j != i)
+						is_valid = false;
+				
+				}
+			}
+				
+			if (is_valid)
 			{
 				//cout << "sending: " << is_valid << " to " << collectorID << endl;
 				if (o)
 				{
 					cout << "Solution found: <";
-					for (auto i : board)
-						cout << i << " ";
+					for (int i = 0; i < board.size(); i++)
+						cout << board[i] << " ";
 					cout << ">\n";
 				}
 
@@ -245,7 +259,27 @@ void slave(int p, int n, int id, int o)
 						0,
 						MPI_COMM_WORLD	);
 			}
-        }
-	}	
+
+			std::next_permutation(board.begin(), board.end()); 
+		}
+	}
+
+	int shutdown = -id; // tell collector we are done
+	MPI_Send(	&shutdown,
+					1,
+					MPI_INT,
+					collectorID,
+					0,
+					MPI_COMM_WORLD	);
+
+}
+
+
+int factorial(int n)
+{
+	int f = n;
+	for (int i = 2; i < n; i++)
+		f *= i;
+	return f;
 }
 
