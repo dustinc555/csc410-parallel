@@ -8,6 +8,8 @@ import datetime
 subprocess.run(["make", "parallel"], universal_newlines=True)
 subprocess.run(["make", "serial"], universal_newlines=True)
 
+print("n,p,s")
+
 for i in range(1, 17):
 	
 	# RUN PARALLEL #
@@ -23,4 +25,4 @@ for i in range(1, 17):
 	end = datetime.datetime.now()
 	serial_runtime = end - start
 
-	print(str(i) + str(parallel_runtime.total_seconds()) + str(serial_runtime.total_seconds()))
+	print(str(i) + "," + str(parallel_runtime.total_seconds()) + "," + str(serial_runtime.total_seconds()))
