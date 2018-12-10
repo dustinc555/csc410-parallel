@@ -1,6 +1,6 @@
 
 
-parallel: parallel.cpp
+parallel: nqueens.cpp
 	mpic++ nqueens.cpp -o nqueens 
 
 serial: serial.cpp
