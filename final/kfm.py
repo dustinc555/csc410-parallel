@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-
 import subprocess
 import random
 import datetime
-
 
 subprocess.run(["make", "parallel"], universal_newlines=True)
 subprocess.run(["make", "serial"], universal_newlines=True)
